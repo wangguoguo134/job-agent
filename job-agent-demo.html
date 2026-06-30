@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>校招 Agent 助手 - 智能投递</title>
+<style>
+:root {
+  --bg: #0f1117;
+  --sidebar-bg: #161822;
+  --card-bg: #1a1d2e;
+  --border: #2a2d3e;
+  --text: #e1e4ed;
+  --text-dim: #8b8fa8;
+  --accent: #4f8fff;
+  --accent-glow: rgba(79, 143, 255, 0.2);
+  --green: #34d399;
+  --green-bg: rgba(52, 211, 153, 0.12);
+  --orange: #fb923c;
+  --orange-bg: rgba(251, 146, 60, 0.12);
+  --red: #f87171;
+  --red-bg: rgba(248, 113, 113, 0.12);
+  --tencent: #00a4ff;
+  --byte: #3253dc;
+  --ali: #ff6a00;
+  --radius: 12px;
+  --shadow: 0 4px 24px rgba(0,0,0,0.3);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ===== Sidebar ===== */
+.sidebar {
+  width: 240px; min-width: 240px;
+  background: var(--sidebar-bg); border-right: 1px solid var(--border);
+  padding: 24px 16px; display: flex; flex-direction: column; gap: 4px;
+}
+.sidebar .logo { font-size: 18px; font-weight: 700; margin-bottom: 32px; display: flex; align-items: center; gap: 10px; }
+.sidebar .logo .icon { width: 32px; height: 32px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+.step-dot {
+  display: flex; align-items: center; gap: 12px; padding: 12px 14px;
+  border-radius: 10px; cursor: pointer; transition: all 0.2s; color: var(--text-dim); font-size: 14px;
+}
+.step-dot:hover { background: rgba(255,255,255,0.04); color: var(--text); }
+.step-dot.active { background: var(--accent-glow); color: var(--accent); font-weight: 600; }
+.step-dot.done { color: var(--green); }
+.step-num {
+  width: 28px; height: 28px; border-radius: 50%; border: 2px solid currentColor;
+  display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; transition: all 0.2s;
+}
+.step-dot.active .step-num { background: var(--accent); border-color: var(--accent); color: #fff; }
+.step-dot.done .step-num { background: var(--green); border-color: var(--green); color: #fff; }
+.sidebar .version { margin-top: auto; font-size: 11px; color: var(--text-dim); }
+
+/* ===== Main ===== */
+.main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.topbar {
+  height: 56px; border-bottom: 1px solid var(--border); display: flex;
+  align-items: center; padding: 0 32px; gap: 16px; font-size: 13px; color: var(--text-dim); flex-shrink: 0;
+}
+.topbar .company-tags { display: flex; gap: 8px; margin-left: auto; }
+.company-tag { padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+.tag-tencent { background: rgba(0,164,255,0.15); color: var(--tencent); }
+.tag-byte { background: rgba(50,83,220,0.15); color: var(--byte); }
+.tag-ali { background: rgba(255,106,0,0.15); color: var(--ali); }
+.tag-server { padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+.tag-online { background: rgba(52,211,153,0.15); color: var(--green); }
+.tag-offline { background: rgba(248,113,113,0.15); color: var(--red); }
+.content { flex: 1; overflow-y: auto; padding: 32px; scroll-behavior: smooth; }
+.content::-webkit-scrollbar { width: 6px; }
+.content::-webkit-scrollbar-track { background: transparent; }
+.content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* ===== Step Panels ===== */
+.step-panel { display: none; animation: fadeSlideIn 0.35s ease; }
+.step-panel.active { display: block; }
+@keyframes fadeSlideIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+.section-title { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+.section-subtitle { color: var(--text-dim); font-size: 14px; margin-bottom: 24px; }
+
+/* Step 1: Resume */
+.resume-layout { display: flex; gap: 24px; height: calc(100vh - 200px); }
+.resume-input-panel { flex: 1; display: flex; flex-direction: column; gap: 12px; }
+.resume-input-panel textarea {
+  flex: 1; background: var(--card-bg); border: 1px solid var(--border);
+  border-radius: var(--radius); color: var(--text); padding: 20px;
+  font-size: 14px; line-height: 1.7; resize: none; font-family: inherit;
+}
+.resume-input-panel textarea:focus { outline: none; border-color: var(--accent); }
+.btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.btn {
+  padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer;
+  font-size: 13px; font-weight: 600; transition: all 0.15s; font-family: inherit;
+}
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { box-shadow: 0 0 20px var(--accent-glow); transform: translateY(-1px); }
+.btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+.btn-outline:hover { border-color: var(--accent); background: var(--accent-glow); }
+.btn-sm { padding: 6px 14px; font-size: 12px; }
+.btn-green { background: var(--green); color: #000; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.resume-preview {
+  flex: 1; background: var(--card-bg); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 20px; overflow-y: auto; font-size: 13px; line-height: 1.8; color: var(--text-dim);
+}
+.resume-preview h4 { color: var(--text); margin-bottom: 12px; font-size: 15px; }
+.resume-preview .parsed-section { margin-bottom: 12px; }
+.resume-preview .parsed-section .label { font-weight: 600; color: var(--text); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+.skill-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.skill-tag { padding: 3px 10px; background: var(--accent-glow); color: var(--accent); border-radius: 20px; font-size: 11px; font-weight: 500; }
+
+/* Step 2: Company Select */
+.company-select-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+.company-card {
+  background: var(--card-bg); border: 2px solid var(--border); border-radius: var(--radius);
+  padding: 24px; cursor: pointer; transition: all 0.2s; text-align: center;
+}
+.company-card:hover { border-color: var(--text-dim); }
+.company-card.selected.tencent { border-color: var(--tencent); background: rgba(0,164,255,0.08); }
+.company-card.selected.byte { border-color: var(--byte); background: rgba(50,83,220,0.08); }
+.company-card.selected.ali { border-color: var(--ali); background: rgba(255,106,0,0.08); }
+.company-card .company-logo { font-size: 40px; margin-bottom: 12px; }
+.company-card .company-name { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+.company-card .company-url { font-size: 11px; color: var(--text-dim); word-break: break-all; }
+.job-type-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+.job-type-tag {
+  padding: 8px 18px; border-radius: 20px; border: 1px solid var(--border);
+  cursor: pointer; font-size: 13px; transition: all 0.15s;
+}
+.job-type-tag:hover { border-color: var(--accent); }
+.job-type-tag.selected { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* Step 3: Matching */
+.match-summary { display: flex; gap: 16px; margin-bottom: 24px; }
+.match-stat { flex: 1; background: var(--card-bg); border-radius: var(--radius); padding: 20px; text-align: center; border: 1px solid var(--border); }
+.match-stat .stat-val { font-size: 32px; font-weight: 800; }
+.match-stat .stat-label { font-size: 12px; color: var(--text-dim); margin-top: 4px; }
+.sort-bar { display: flex; gap: 10px; align-items: center; margin-bottom: 20px; font-size: 13px; color: var(--text-dim); }
+.sort-bar select { background: var(--card-bg); border: 1px solid var(--border); color: var(--text); padding: 6px 12px; border-radius: 6px; font-size: 13px; font-family: inherit; }
+.job-cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 16px; }
+.job-card {
+  background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 20px; transition: all 0.2s; cursor: pointer; position: relative; overflow: hidden;
+}
+.job-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: var(--shadow); }
+.job-card .match-badge { position: absolute; top: 14px; right: 14px; font-size: 20px; font-weight: 800; }
+.match-high { color: var(--green); } .match-mid { color: var(--orange); } .match-low { color: var(--red); }
+.job-card .company-badge { display: inline-block; padding: 3px 10px; border-radius: 4px; font-size: 11px; font-weight: 700; margin-bottom: 10px; }
+.job-card .job-title { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+.job-card .job-meta { font-size: 12px; color: var(--text-dim); margin-bottom: 10px; }
+.job-card .job-skills { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.job-card .job-skill { padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; }
+.job-skill.matched { background: var(--green-bg); color: var(--green); }
+.job-skill.missing { background: var(--red-bg); color: var(--red); }
+.job-card .card-actions { margin-top: 12px; display: flex; gap: 8px; }
+
+/* Step 4: Diff */
+.diff-container { display: flex; gap: 16px; height: calc(100vh - 280px); }
+.diff-panel {
+  flex: 1; background: var(--card-bg); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 20px; overflow-y: auto; font-size: 13px; line-height: 1.8;
+}
+.diff-panel h3 { font-size: 14px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+.diff-panel .diff-line { padding: 2px 8px; border-radius: 3px; margin: 1px 0; white-space: pre-wrap; }
+.diff-line.added { background: var(--green-bg); color: var(--green); }
+.diff-line.modified { background: var(--orange-bg); color: var(--orange); }
+.diff-line.unchanged { color: var(--text-dim); }
+
+/* Step 5: Submit */
+.submit-queue { margin-bottom: 24px; }
+.submit-item {
+  background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 16px 20px; margin-bottom: 10px; display: flex; align-items: center; gap: 16px;
+}
+.submit-item .si-company { font-weight: 700; font-size: 14px; min-width: 80px; }
+.submit-item .si-job { flex: 1; font-size: 13px; }
+.submit-item .si-status { font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+.si-status .dot { width: 8px; height: 8px; border-radius: 50%; }
+.dot.waiting { background: var(--text-dim); }
+.dot.running { background: var(--accent); animation: pulse 1s infinite; }
+.dot.success { background: var(--green); }
+.dot.fail { background: var(--red); }
+.dot.manual { background: var(--orange); }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+.terminal {
+  background: #0a0b0f; border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 16px 20px; font-family: "SF Mono", "Fira Code", monospace; font-size: 12px;
+  line-height: 1.8; max-height: 250px; overflow-y: auto; color: var(--green);
+}
+.terminal .log-line { display: flex; gap: 10px; }
+.terminal .log-time { color: var(--text-dim); flex-shrink: 0; }
+.terminal .log-error { color: var(--red); }
+.terminal .log-warn { color: var(--orange); }
+
+.empty-state { text-align: center; padding: 60px 20px; color: var(--text-dim); }
+.empty-state .empty-icon { font-size: 48px; margin-bottom: 12px; }
+
+/* Loading spinner */
+.spinner {
+  display: inline-block; width: 16px; height: 16px; border: 2px solid var(--border);
+  border-top-color: var(--accent); border-radius: 50%; animation: spin 0.6s linear infinite; vertical-align: middle; margin-right: 6px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<aside class="sidebar">
+  <div class="logo"><div class="icon">🎯</div>JobAgent</div>
+  <div class="step-indicator">
+    <div class="step-dot active" data-step="1"><span class="step-num">1</span> 录入简历</div>
+    <div class="step-dot" data-step="2"><span class="step-num">2</span> 选择目标</div>
+    <div class="step-dot" data-step="3"><span class="step-num">3</span> 岗位匹配</div>
+    <div class="step-dot" data-step="4"><span class="step-num">4</span> 简历微调</div>
+    <div class="step-dot" data-step="5"><span class="step-num">5</span> 自动投递</div>
+  </div>
+  <div class="version">v2.0 · 真实爬取+投递</div>
+</aside>
+
+<!-- Main -->
+<div class="main">
+  <div class="topbar">
+    <span id="backendStatus">🔌 检测后端服务...</span>
+    <span>🕐 <span id="clock">--</span></span>
+    <div class="company-tags">
+      <span class="company-tag tag-tencent">腾讯校招</span>
+      <span class="company-tag tag-byte">字节跳动</span>
+      <span class="company-tag tag-ali">阿里巴巴</span>
+    </div>
+  </div>
+
+  <div class="content" id="content">
+
+    <!-- Step 1: Resume Input -->
+    <div class="step-panel active" data-panel="1">
+      <h2 class="section-title">📝 录入你的简历</h2>
+      <p class="section-subtitle">粘贴简历文本，AI 将自动解析技能、学历和项目经验</p>
+      <div class="resume-layout">
+        <div class="resume-input-panel">
+          <textarea id="resumeInput" placeholder="在此粘贴你的简历内容...&#10;&#10;建议包含：教育背景、技术栈、项目经验、实习经历、自我评价"></textarea>
+          <div class="btn-row">
+            <button class="btn btn-outline btn-sm" onclick="loadSampleResume()">📋 填充示例简历</button>
+            <label class="btn btn-outline btn-sm" style="cursor:pointer;">
+              📎 上传文件 <input type="file" id="fileUpload" accept=".txt" style="display:none" onchange="handleFileUpload(event)">
+            </label>
+            <button class="btn btn-primary" id="btnParse" onclick="parseResume()">🔍 解析简历 →</button>
+          </div>
+        </div>
+        <div class="resume-preview" id="resumePreview">
+          <h4>📊 解析结果</h4>
+          <div class="empty-state"><div class="empty-icon">📭</div><p>输入简历后点击「解析简历」</p></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2: Select Companies -->
+    <div class="step-panel" data-panel="2">
+      <h2 class="section-title">🏢 选择目标公司与岗位类型</h2>
+      <p class="section-subtitle">Agent 将用真实浏览器爬取这些公司的最新校招岗位</p>
+      <div class="company-select-grid">
+        <div class="company-card selected tencent" data-company="tencent" onclick="toggleCompany(this)">
+          <div class="company-logo">🔵</div><div class="company-name">腾讯 Tencent</div>
+          <div class="company-url">join.qq.com</div>
+        </div>
+        <div class="company-card selected byte" data-company="byte" onclick="toggleCompany(this)">
+          <div class="company-logo">🟣</div><div class="company-name">字节跳动 ByteDance</div>
+          <div class="company-url">jobs.bytedance.com</div>
+        </div>
+        <div class="company-card selected ali" data-company="ali" onclick="toggleCompany(this)">
+          <div class="company-logo">🟠</div><div class="company-name">阿里巴巴 Alibaba</div>
+          <div class="company-url">campus-talent.alibaba.com</div>
+        </div>
+      </div>
+      <h3 style="font-size:14px;margin-bottom:10px;">岗位类型</h3>
+      <div class="job-type-tags" id="jobTypeTags">
+        <span class="job-type-tag selected" data-type="backend" onclick="toggleJobType(this)">后端开发</span>
+        <span class="job-type-tag selected" data-type="frontend" onclick="toggleJobType(this)">前端开发</span>
+        <span class="job-type-tag selected" data-type="algorithm" onclick="toggleJobType(this)">算法/AI</span>
+        <span class="job-type-tag selected" data-type="data" onclick="toggleJobType(this)">数据科学</span>
+        <span class="job-type-tag selected" data-type="mobile" onclick="toggleJobType(this)">移动端开发</span>
+        <span class="job-type-tag" data-type="product" onclick="toggleJobType(this)">产品经理</span>
+        <span class="job-type-tag" data-type="test" onclick="toggleJobType(this)">测试开发</span>
+        <span class="job-type-tag" data-type="security" onclick="toggleJobType(this)">安全工程师</span>
+      </div>
+      <div style="margin-top:24px;">
+        <button class="btn btn-primary" id="btnScrape" onclick="startScraping()">🚀 开始爬取 & 匹配 →</button>
+      </div>
+    </div>
+
+    <!-- Step 3: Job Matching -->
+    <div class="step-panel" data-panel="3">
+      <h2 class="section-title">🎯 岗位匹配结果</h2>
+      <p class="section-subtitle" id="matchSubtitle">共匹配到 0 个岗位</p>
+      <div class="match-summary" id="matchSummary"></div>
+      <div class="sort-bar">
+        排序: <select id="sortSelect" onchange="sortJobs()">
+          <option value="score">按匹配度 ↓</option><option value="company">按公司</option>
+        </select>
+        <span style="margin-left:auto;" id="resultCount"></span>
+      </div>
+      <div class="job-cards-grid" id="jobCardsGrid"></div>
+    </div>
+
+    <!-- Step 4: Resume Diff -->
+    <div class="step-panel" data-panel="4">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
+        <h2 class="section-title" style="margin:0;">✏️ 简历微调对比</h2>
+        <span id="diffTargetJob" style="font-size:13px;color:var(--text-dim);"></span>
+      </div>
+      <p class="section-subtitle">左侧为原始简历，右侧为 AI 针对目标岗位微调后的版本</p>
+      <div class="diff-container">
+        <div class="diff-panel original"><h3>📄 原始简历</h3><div id="originalResumeContent"></div></div>
+        <div class="diff-panel"><h3>✨ 微调后简历</h3><div id="tailoredResumeContent"></div></div>
+      </div>
+      <div class="btn-row" style="margin-top:16px;">
+        <button class="btn btn-outline" onclick="copyTailoredResume()">📋 复制微调版</button>
+        <button class="btn btn-outline" onclick="downloadTailoredResume()">⬇️ 下载微调版</button>
+        <button class="btn btn-primary" onclick="goToSubmit()">📤 批量投递 →</button>
+      </div>
+    </div>
+
+    <!-- Step 5: Auto Submit -->
+    <div class="step-panel" data-panel="5">
+      <h2 class="section-title">📤 自动投递</h2>
+      <p class="section-subtitle">Agent 将用真实浏览器打开各公司投递页面，自动填写表单信息</p>
+      <div class="submit-queue" id="submitQueue"></div>
+      <div style="margin-bottom:8px;font-size:13px;font-weight:600;">📟 投递日志 (实时)</div>
+      <div class="terminal" id="terminal">
+        <div class="log-line"><span class="log-time">--:--:--</span>等待开始投递...</div>
+      </div>
+      <div class="btn-row" style="margin-top:16px;">
+        <button class="btn btn-primary" id="btnStartSubmit" onclick="startSubmit()">▶️ 开始投递 (打开真实浏览器)</button>
+        <button class="btn btn-outline" id="btnReset" onclick="resetAll()">🔄 从头开始</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ===========================
+// CONFIG
+// ===========================
+const API_BASE = 'http://localhost:5000';
+
+// ===========================
+// GLOBAL STATE
+// ===========================
+let currentStep = 1;
+let parsedResume = null;
+let selectedCompanies = ['tencent', 'byte', 'ali'];
+let selectedJobTypes = ['backend', 'frontend', 'algorithm', 'data', 'mobile'];
+let matchedJobs = [];
+let selectedJobForDiff = null;
+let tailoredResumeText = '';
+let submitQueue = [];
+let submitPollTimer = null;
+let backendOnline = false;
+
+// ===========================
+// BACKEND HEALTH CHECK
+// ===========================
+async function checkBackend() {
+  const el = document.getElementById('backendStatus');
+  try {
+    const res = await fetch(`${API_BASE}/api/health`, { signal: AbortSignal.timeout(3000) });
+    if (res.ok) {
+      backendOnline = true;
+      el.innerHTML = '<span class="tag-server tag-online">🟢 后端在线</span>';
+      return true;
+    }
+  } catch(e) {}
+  backendOnline = false;
+  el.innerHTML = '<span class="tag-server tag-offline">🔴 后端离线 - 请启动 python3 job-agent-server.py</span>';
+  return false;
+}
+checkBackend();
+setInterval(checkBackend, 10000);
+
+// ===========================
+// CLOCK
+// ===========================
+function updateClock() {
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString('zh-CN');
+}
+setInterval(updateClock, 1000); updateClock();
+
+// ===========================
+// STEP NAVIGATION
+// ===========================
+document.querySelectorAll('.step-dot').forEach(dot => {
+  dot.addEventListener('click', function() {
+    const step = parseInt(this.dataset.step);
+    if (step <= currentStep || (step === currentStep + 1 && canAdvance())) {
+      navigateToStep(step);
+    }
+  });
+});
+
+function canAdvance() {
+  if (currentStep === 1) return parsedResume !== null;
+  if (currentStep === 2) return matchedJobs.length > 0;
+  if (currentStep === 3) return selectedJobForDiff !== null;
+  return true;
+}
+
+function navigateToStep(step) {
+  currentStep = step;
+  document.querySelectorAll('.step-dot').forEach(d => d.classList.remove('active'));
+  const targetDot = document.querySelector(`.step-dot[data-step="${step}"]`);
+  if (targetDot) targetDot.classList.add('active');
+  document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
+  const panel = document.querySelector(`.step-panel[data-panel="${step}"]`);
+  if (panel) panel.classList.add('active');
+  document.querySelectorAll('.step-dot').forEach(d => {
+    const s = parseInt(d.dataset.step);
+    if (s < step) d.classList.add('done'); else d.classList.remove('done');
+  });
+  document.getElementById('content').scrollTop = 0;
+}
+
+// ===========================
+// STEP 1: RESUME INPUT
+// ===========================
+function loadSampleResume() {
+  const sample = `教育背景
+清华大学 计算机科学与技术 本科 2026届 | GPA: 3.8/4.0
+
+技术栈
+编程语言: Python, Java, Go, C++, JavaScript, TypeScript, SQL
+框架: Spring Boot, Flask, React, Vue.js, Node.js
+数据库/缓存: MySQL, PostgreSQL, Redis, MongoDB, Elasticsearch
+云原生: Docker, Kubernetes, Nginx, CI/CD (GitHub Actions)
+大数据: Spark, Kafka, Hadoop, Flink
+AI/ML: PyTorch, TensorFlow, Scikit-learn, LangChain
+
+项目经验
+1. 分布式电商平台 (2024.09 - 2025.01)
+   - 基于 Spring Cloud 微服务架构，负责订单系统与支付模块设计
+   - 使用 Redis 缓存热点数据，MySQL 分库分表，支持 10w+ QPS
+   - Docker + K8s 容器化部署，Prometheus + Grafana 监控
+
+2. 智能客服对话系统 (2024.03 - 2024.08)
+   - 基于 LLM (GPT-4) + RAG 架构，结合 LangChain 实现知识库问答
+   - 向量检索使用 Milvus，Embedding 模型 BGE-large
+   - Python FastAPI 后端，React 前端，WebSocket 实时流式响应
+
+实习经历
+字节跳动 后端开发实习生 (2024.06 - 2024.09)
+- 参与抖音直播礼物系统的微服务拆分和性能优化
+- 使用 Go 语言开发，优化后 P99 延迟降低 40%
+
+自我评价
+- 扎实的计算机基础知识（数据结构、操作系统、计算机网络）
+- 熟悉大规模分布式系统设计与开发
+- 良好的英语读写能力 (CET-6 600+)`;
+  document.getElementById('resumeInput').value = sample;
+}
+
+function handleFileUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) { document.getElementById('resumeInput').value = e.target.result; };
+  reader.readAsText(file);
+}
+
+async function parseResume() {
+  const text = document.getElementById('resumeInput').value.trim();
+  if (!text) { alert('请先输入或上传简历内容'); return; }
+
+  if (!backendOnline) { alert('后端服务离线，请先启动: python3 job-agent-server.py'); return; }
+
+  const btn = document.getElementById('btnParse');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>解析中...';
+
+  document.getElementById('resumePreview').innerHTML = '<h4>📊 解析中...</h4><p style="color:var(--text-dim)">AI 正在分析简历内容...</p>';
+
+  try {
+    const res = await fetch(`${API_BASE}/api/parse-resume`, {
+      method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ text })
+    });
+    const data = await res.json();
+    if (data.error) { alert(data.error); return; }
+    parsedResume = data.resume;
+    renderResumePreview();
+    navigateToStep(2);
+  } catch(e) {
+    alert('连接后端失败: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🔍 解析简历 →';
+  }
+}
+
+function renderResumePreview() {
+  if (!parsedResume) return;
+  const p = parsedResume;
+  document.getElementById('resumePreview').innerHTML = `
+    <h4>📊 解析结果 (服务端)</h4>
+    <div class="parsed-section"><div class="label">🎓 教育背景</div>
+      <div>${p.education.school} · ${p.education.degree} · ${p.education.graduation}届</div></div>
+    <div class="parsed-section"><div class="label">🛠 技能标签 (${p.skills.length}项)</div>
+      <div class="skill-tags">${p.skills.map(s => `<span class="skill-tag">${s}</span>`).join('')}</div></div>
+    <div class="parsed-section"><div class="label">💼 项目经历</div>
+      ${p.projects.map(pr => `<div style="margin-top:4px;font-size:12px;">${pr.replace(/\n/g,'<br>')}</div>`).join('')}</div>
+  `;
+}
+
+// ===========================
+// STEP 2: SELECT
+// ===========================
+function toggleCompany(card) {
+  const company = card.dataset.company;
+  card.classList.toggle('selected');
+  if (card.classList.contains('selected')) { if (!selectedCompanies.includes(company)) selectedCompanies.push(company); }
+  else { selectedCompanies = selectedCompanies.filter(c => c !== company); }
+}
+function toggleJobType(tag) {
+  const type = tag.dataset.type;
+  tag.classList.toggle('selected');
+  if (tag.classList.contains('selected')) { if (!selectedJobTypes.includes(type)) selectedJobTypes.push(type); }
+  else { selectedJobTypes = selectedJobTypes.filter(t => t !== type); }
+}
+
+async function startScraping() {
+  if (selectedCompanies.length === 0) { alert('请至少选择一家公司'); return; }
+  if (selectedJobTypes.length === 0) { alert('请至少选择一个岗位类型'); return; }
+  if (!parsedResume) { alert('请先回到第1步录入简历'); return; }
+  if (!backendOnline) { alert('后端服务离线，请先启动: python3 job-agent-server.py'); return; }
+
+  const btn = document.getElementById('btnScrape');
+  const orig = btn.textContent;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> 正在用真实浏览器爬取岗位数据...';
+
+  try {
+    // Step 1: Scrape
+    const scrapeRes = await fetch(`${API_BASE}/api/scrape`, {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ companies: selectedCompanies, job_types: selectedJobTypes })
+    });
+    const scrapeData = await scrapeRes.json();
+    if (scrapeData.error) { alert('爬取失败: ' + scrapeData.error); return; }
+
+    btn.innerHTML = '<span class="spinner"></span> 正在匹配简历与岗位...';
+
+    // Step 2: Match
+    const matchRes = await fetch(`${API_BASE}/api/match`, {
+      method: 'POST', headers: {'Content-Type': 'application/json'}
+    });
+    const matchData = await matchRes.json();
+    if (matchData.error) { alert('匹配失败: ' + matchData.error); return; }
+
+    matchedJobs = matchData.matched_jobs;
+    renderMatchResults();
+    navigateToStep(3);
+  } catch(e) {
+    alert('连接后端失败: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = orig;
+  }
+}
+
+// ===========================
+// STEP 3: RENDER MATCHES
+// ===========================
+function renderMatchResults() {
+  document.getElementById('matchSubtitle').textContent = `共匹配到 ${matchedJobs.length} 个岗位`;
+  document.getElementById('resultCount').textContent = `共 ${matchedJobs.length} 个结果`;
+
+  const high = matchedJobs.filter(j => j.match_score >= 75).length;
+  const mid = matchedJobs.filter(j => j.match_score >= 50 && j.match_score < 75).length;
+  const low = matchedJobs.filter(j => j.match_score < 50).length;
+  document.getElementById('matchSummary').innerHTML = `
+    <div class="match-stat"><div class="stat-val" style="color:var(--green)">${high}</div><div class="stat-label">高匹配 (≥75%)</div></div>
+    <div class="match-stat"><div class="stat-val" style="color:var(--orange)">${mid}</div><div class="stat-label">中匹配 (50-74%)</div></div>
+    <div class="match-stat"><div class="stat-val" style="color:var(--red)">${low}</div><div class="stat-label">低匹配 (<50%)</div></div>
+  `;
+  renderJobCards();
+}
+
+function renderJobCards() {
+  const grid = document.getElementById('jobCardsGrid');
+  if (matchedJobs.length === 0) {
+    grid.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><p>没有匹配的岗位</p></div>';
+    return;
+  }
+  const companyNames = { tencent: '腾讯', byte: '字节跳动', ali: '阿里巴巴' };
+  const companyClass = { tencent: 'tag-tencent', byte: 'tag-byte', ali: 'tag-ali' };
+  const resumeSkills = (parsedResume?.skills || []).map(s => s.toLowerCase());
+
+  grid.innerHTML = matchedJobs.map(j => {
+    const sc = j.match_score;
+    const scoreClass = sc >= 75 ? 'match-high' : sc >= 50 ? 'match-mid' : 'match-low';
+    const skillMatch = j.skill_match || {};
+    return `
+    <div class="job-card" onclick="selectJobForDiff('${j.id}')">
+      <div class="match-badge ${scoreClass}">${sc}%</div>
+      <div class="company-badge ${companyClass[j.company]}">${companyNames[j.company]}</div>
+      <div class="job-title">${j.title}</div>
+      <div class="job-meta">📍 ${j.location || '未知'} · ${j.department || '未知部门'}</div>
+      <div style="font-size:12px;color:var(--text-dim);margin-bottom:6px;">${j.desc || ''}</div>
+      <div class="job-skills">
+        ${(j.required_skills || []).map(s => {
+          const matched = skillMatch[s];
+          return `<span class="job-skill ${matched ? 'matched' : 'missing'}">${matched ? '✓' : '✗'} ${s}</span>`;
+        }).join('')}
+      </div>
+      <div class="card-actions">
+        <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();selectJobForDiff('${j.id}')">✏️ 微调简历</button>
+        <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();addToSubmitQueue('${j.id}')">📤 加入投递</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function sortJobs() {
+  const sortBy = document.getElementById('sortSelect').value;
+  if (sortBy === 'score') matchedJobs.sort((a,b) => b.match_score - a.match_score);
+  else {
+    const order = { tencent: 1, byte: 2, ali: 3 };
+    matchedJobs.sort((a,b) => (order[a.company]||0) - (order[b.company]||0));
+  }
+  renderJobCards();
+}
+
+function addToSubmitQueue(jobId) {
+  const job = matchedJobs.find(j => j.id === jobId);
+  if (!job) return;
+  if (!submitQueue.find(j => j.id === jobId)) {
+    submitQueue.push(job);
+    showToast(`已加入投递队列: ${job.title}`);
+  } else {
+    showToast('该岗位已在投递队列中');
+  }
+}
+
+// ===========================
+// STEP 4: RESUME DIFF
+// ===========================
+async function selectJobForDiff(jobId) {
+  if (!backendOnline) { alert('后端离线'); return; }
+  const job = matchedJobs.find(j => j.id === jobId);
+  if (!job) return;
+  selectedJobForDiff = job;
+  addToSubmitQueue(jobId);
+
+  document.getElementById('diffTargetJob').textContent = `目标: ${job.title} · ${job.department} (${job.match_score}% 匹配)`;
+
+  try {
+    const res = await fetch(`${API_BASE}/api/tailor`, {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ job_id: jobId })
+    });
+    const data = await res.json();
+    if (data.error) { alert(data.error); return; }
+    tailoredResumeText = data.tailored;
+    renderDiff(data.original, data.tailored);
+    navigateToStep(4);
+  } catch(e) {
+    alert('微调失败: ' + e.message);
+  }
+}
+
+function renderDiff(original, tailored) {
+  const origLines = original.split('\n');
+  const tailoredLines = tailored.split('\n');
+  const origSet = new Set(origLines.map(l => l.trim()).filter(l => l.length > 0));
+
+  document.getElementById('originalResumeContent').innerHTML = origLines
+    .map(l => `<div class="diff-line unchanged">${escHtml(l) || '&nbsp;'}</div>`).join('');
+
+  document.getElementById('tailoredResumeContent').innerHTML = tailoredLines.map(l => {
+    const t = l.trim();
+    if (!t) return '<div class="diff-line unchanged">&nbsp;</div>';
+    if (t.startsWith('【目标岗位') || t.includes('学习中')) return `<div class="diff-line added">${escHtml(l)}</div>`;
+    if (t.includes('项目经验（针对') || t.includes('浓厚兴趣') || t.includes('契')) return `<div class="diff-line modified">${escHtml(l)}</div>`;
+    if (t.includes('并熟') || t.includes('核心技术')) return `<div class="diff-line added">${escHtml(l)}</div>`;
+    if (!origSet.has(t) && !t.startsWith('-')) return `<div class="diff-line modified">${escHtml(l)}</div>`;
+    return `<div class="diff-line unchanged">${escHtml(l) || '&nbsp;'}</div>`;
+  }).join('');
+}
+
+function escHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+function copyTailoredResume() {
+  if (!tailoredResumeText) return;
+  navigator.clipboard.writeText(tailoredResumeText).then(() => showToast('已复制微调版简历'));
+}
+function downloadTailoredResume() {
+  if (!tailoredResumeText) return;
+  const blob = new Blob([tailoredResumeText], { type: 'text/plain;charset=utf-8' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `简历_微调版_${selectedJobForDiff?.title?.slice(0,20) || 'untitled'}.txt`;
+  a.click(); URL.revokeObjectURL(a.href);
+}
+function goToSubmit() { navigateToStep(5); renderSubmitQueue(); }
+
+// ===========================
+// STEP 5: AUTO SUBMIT
+// ===========================
+function renderSubmitQueue() {
+  const container = document.getElementById('submitQueue');
+  if (submitQueue.length === 0) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><p>投递队列为空</p></div>';
+    document.getElementById('btnStartSubmit').disabled = true;
+    return;
+  }
+  const companyNames = { tencent: '腾讯', byte: '字节跳动', ali: '阿里巴巴' };
+  document.getElementById('btnStartSubmit').disabled = false;
+
+  container.innerHTML = submitQueue.map(j => `
+    <div class="submit-item" id="submit-item-${j.id}">
+      <div class="si-company">${companyNames[j.company]}</div>
+      <div class="si-job">${j.title} · ${j.department} · ${j.location || '未知'}</div>
+      <div style="font-size:12px;color:var(--text-dim);">匹配 ${j.match_score}%</div>
+      <div class="si-status" id="status-${j.id}"><span class="dot waiting"></span> 等待中</div>
+    </div>
+  `).join('');
+}
+
+async function startSubmit() {
+  if (submitQueue.length === 0) return;
+  if (!backendOnline) { alert('后端离线，请先启动: python3 job-agent-server.py'); return; }
+
+  document.getElementById('btnStartSubmit').disabled = true;
+  const terminal = document.getElementById('terminal');
+  const jobIds = submitQueue.map(j => j.id);
+
+  terminal.innerHTML = '<div class="log-line"><span class="log-time">--:--:--</span>🚀 正在启动投递...</div>';
+
+  try {
+    const res = await fetch(`${API_BASE}/api/submit`, {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ job_ids: jobIds })
+    });
+    const data = await res.json();
+    if (data.error) { alert(data.error); return; }
+
+    // 更新所有状态为 running
+    submitQueue.forEach(j => {
+      const el = document.getElementById('status-' + j.id);
+      if (el) el.innerHTML = '<span class="dot running"></span> 投递中...';
+    });
+
+    // 开始轮询状态
+    pollSubmitStatus();
+  } catch(e) {
+    terminal.innerHTML += `<div class="log-line"><span class="log-time">--:--:--</span><span class="log-error">❌ ${e.message}</span></div>`;
+  }
+}
+
+async function pollSubmitStatus() {
+  try {
+    const res = await fetch(`${API_BASE}/api/submit-status`);
+    const data = await res.json();
+
+    // 更新日志
+    const terminal = document.getElementById('terminal');
+    const currentLogCount = terminal.querySelectorAll('.log-line').length;
+    for (let i = currentLogCount; i < data.logs.length; i++) {
+      const log = data.logs[i];
+      const cls = log.message.includes('❌') ? 'log-error' : log.message.includes('⚠') ? 'log-warn' : '';
+      terminal.innerHTML += `<div class="log-line"><span class="log-time">${log.time}</span><span class="${cls}">${log.message}</span></div>`;
+      terminal.scrollTop = terminal.scrollHeight;
+    }
+
+    // 更新投递状态
+    const companyNames = { tencent: '腾讯', byte: '字节跳动', ali: '阿里巴巴' };
+    data.progress.forEach(p => {
+      const el = document.getElementById('status-' + p.job_id);
+      if (!el) return;
+      if (p.status === 'running') {
+        el.innerHTML = '<span class="dot running"></span> 投递中...';
+      } else if (p.status === 'success') {
+        el.innerHTML = '<span class="dot success"></span> ✓ 投递成功';
+      } else if (p.status === 'manual') {
+        el.innerHTML = '<span class="dot manual"></span> ⚡ 待手动确认';
+      } else if (p.status === 'failed') {
+        el.innerHTML = '<span class="dot fail"></span> ✗ 失败';
+      }
+    });
+
+    if (data.is_submitting) {
+      submitPollTimer = setTimeout(pollSubmitStatus, 1500);
+    } else {
+      // 投递完成，显示总结
+      document.getElementById('btnReset').style.display = 'inline-block';
+      const successCount = data.progress.filter(p => p.status === 'success' || p.status === 'manual').length;
+      terminal.innerHTML += `<div class="log-line"><span class="log-time">--</span>━━━━━━━━━━━━━━━━━</div>`;
+      terminal.innerHTML += `<div class="log-line"><span class="log-time">--</span>📊 投递完成: ${successCount}/${data.progress.length} 已处理</div>`;
+      terminal.innerHTML += `<div class="log-line"><span class="log-time">--</span><span class="log-warn">💡 请在打开的浏览器窗口中确认并手动完成最终提交（需处理验证码/登录）</span></div>`;
+      terminal.scrollTop = terminal.scrollHeight;
+    }
+  } catch(e) {
+    submitPollTimer = setTimeout(pollSubmitStatus, 2000);
+  }
+}
+
+function resetAll() {
+  if (submitPollTimer) clearTimeout(submitPollTimer);
+  submitQueue = [];
+  matchedJobs = [];
+  selectedJobForDiff = null;
+  tailoredResumeText = '';
+  parsedResume = null;
+  document.getElementById('terminal').innerHTML = '<div class="log-line"><span class="log-time">--:--:--</span>等待开始投递...</div>';
+  document.getElementById('resumeInput').value = '';
+  document.getElementById('resumePreview').innerHTML = '<h4>📊 解析结果</h4><div class="empty-state"><div class="empty-icon">📭</div><p>输入简历后点击「解析简历」</p></div>';
+  document.getElementById('jobCardsGrid').innerHTML = '';
+  document.getElementById('submitQueue').innerHTML = '';
+  document.getElementById('btnStartSubmit').disabled = false;
+  navigateToStep(1);
+  showToast('已重置');
+}
+
+// ===========================
+// TOAST
+// ===========================
+function showToast(msg) {
+  let toast = document.getElementById('toast');
+  if (!toast) {
+    toast = document.createElement('div'); toast.id = 'toast';
+    toast.style.cssText = 'position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:10px 24px;border-radius:20px;font-size:13px;z-index:999;pointer-events:none;transition:opacity 0.3s;opacity:0;';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg; toast.style.opacity = '1';
+  clearTimeout(toast._timeout);
+  toast._timeout = setTimeout(() => { toast.style.opacity = '0'; }, 2500);
+}
+</script>
+</body>
+</html>
